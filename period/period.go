@@ -8,7 +8,6 @@ import (
 type Period interface {
 	AddDelta(delta Delta, sign int) Period
 	Compare(rhs Period) comparison.Spaceship // <=>
-	Lerp(t float64, rhs Period) Period
 	GetSamplerAdd(baseFreq Frequency) float64
 	GetFrequency() Frequency
 }

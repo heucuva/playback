@@ -7,7 +7,7 @@ import (
 
 // Sampler is a container of sampler/mixer settings
 type Sampler struct {
-	SampleRate    int
+	SampleRate    period.Frequency
 	BaseClockRate period.Frequency
 
 	mixer mixing.Mixer
@@ -16,7 +16,7 @@ type Sampler struct {
 // NewSampler returns a new sampler object based on the input settings
 func NewSampler(samplesPerSec, channels int, baseClockRate period.Frequency) *Sampler {
 	s := Sampler{
-		SampleRate:    samplesPerSec,
+		SampleRate:    period.Frequency(samplesPerSec),
 		BaseClockRate: baseClockRate,
 		mixer: mixing.Mixer{
 			Channels: channels,
@@ -29,7 +29,7 @@ func NewSampler(samplesPerSec, channels int, baseClockRate period.Frequency) *Sa
 // which is a product of the base sampler clock rate and the inverse
 // of the output render rate (the sample rate)
 func (s *Sampler) GetSamplerSpeed() period.Frequency {
-	return s.BaseClockRate / period.Frequency(s.SampleRate)
+	return s.SampleRate
 }
 
 // Mixer returns a pointer to the current mixer object

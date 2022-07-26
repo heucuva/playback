@@ -1,7 +1,6 @@
 package period
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/gotracker/playback/note"
@@ -12,73 +11,48 @@ import (
 
 // Amiga defines a sampler period that follows the Amiga-style approach of note
 // definition. Useful in calculating resampling.
-type Amiga period.AmigaPeriod
-
-// AddInteger truncates the current period to an integer and adds the delta integer in
-// then returns the resulting period
-func (p Amiga) AddInteger(delta int) Amiga {
-	period := Amiga(int(p) + delta)
-	return period
+type Amiga struct {
+	period.Component[period.AmigaPeriod]
 }
 
-// Add adds the current period to a delta value then returns the resulting period
-func (p Amiga) AddDelta(delta period.Delta, sign int) period.Period {
-	d := period.ToPeriodDelta(delta) * period.PeriodDelta(sign)
-	p += Amiga(d)
+func NewAmiga(st note.Semitone, ft note.Finetune, instFreq period.Frequency) Amiga {
+	kp := semitonePeriodTable[st.Key()]
+	kp >>= int(st.Octave())
+
+	if ft != 0 {
+		linFreq := period.Frequency(math.Pow(2, float64(ft)/finetunesPerOctave))
+		instFreq /= linFreq
+	}
+
+	var p Amiga
+	p.Value = period.AmigaPeriod(kp)
+	p.FreqRatio = instFreq / MiddleCFrequency
 	return p
 }
 
-// Compare returns:
-//  -1 if the current period is higher frequency than the `rhs` period
-//  0 if the current period is equal in frequency to the `rhs` period
-//  1 if the current period is lower frequency than the `rhs` period
-func (p Amiga) Compare(rhs period.Period) comparison.Spaceship {
-	lf := p.GetFrequency()
-	rf := rhs.GetFrequency()
-
-	switch {
-	case lf < rf:
-		return comparison.SpaceshipRightGreater
-	case lf > rf:
-		return comparison.SpaceshipLeftGreater
-	default:
-		return comparison.SpaceshipEqual
-	}
+func (c Amiga) AddInteger(delta, sign int) period.Period {
+	c.Component = c.Component.AddInteger(delta, sign)
+	return c
 }
 
-// Lerp linear-interpolates the current period with the `rhs` period
-func (p Amiga) Lerp(t float64, rhs period.Period) period.Period {
-	right := Amiga(0)
-	if r, ok := rhs.(Amiga); ok {
-		right = r
+func (c Amiga) AddDelta(delta period.Delta, sign int) period.Period {
+	c.Component = c.Component.AddDelta(delta, sign)
+	return c
+}
+
+func (c Amiga) Compare(rhs period.Period) comparison.Spaceship {
+	rp, ok := rhs.(Amiga)
+	if !ok {
+		panic("cannot compare periods of different kinds")
 	}
 
-	period := Amiga(period.AmigaPeriod(p).Lerp(t, period.AmigaPeriod(right)))
-	return period
+	return c.Component.Compare(rp.Component)
 }
 
-// GetSamplerAdd returns the number of samples to advance an instrument by given the period
-func (p Amiga) GetSamplerAdd(samplerSpeed period.Frequency) float64 {
-	return float64(period.AmigaPeriod(p).GetFrequency(samplerSpeed))
+func (c Amiga) GetSamplerAdd(samplerSpeed period.Frequency) float64 {
+	return c.Component.GetSamplerAdd(BaseClock, samplerSpeed)
 }
 
-// GetFrequency returns the frequency defined by the period
-func (p Amiga) GetFrequency() period.Frequency {
-	return period.AmigaPeriod(p).GetFrequency(period.Frequency(ITBaseClock))
-}
-
-func (p Amiga) String() string {
-	return fmt.Sprintf("Amiga{ Period:%f }", float32(p))
-}
-
-// ToAmigaPeriod calculates an amiga period for a linear finetune period
-func ToAmigaPeriod(finetunes note.Finetune, c2spd period.Frequency) Amiga {
-	if finetunes < 0 {
-		finetunes = 0
-	}
-	pow := math.Pow(2, float64(finetunes)/semitonesPerOctave)
-	linFreq := float64(c2spd) * pow / float64(DefaultC2Spd)
-
-	period := Amiga(float64(semitonePeriodTable[0]) / linFreq)
-	return period
+func (c Amiga) GetFrequency() period.Frequency {
+	return c.Component.GetFrequency(BaseClock)
 }

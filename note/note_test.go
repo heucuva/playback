@@ -45,18 +45,6 @@ func (p testPeriod) Compare(rhs period.Period) comparison.Spaceship {
 	}
 }
 
-// Lerp linear-interpolates the current period with the `rhs` period
-func (p testPeriod) Lerp(t float64, rhs period.Period) period.Period {
-	right := testPeriod(0)
-	if r, ok := rhs.(*testPeriod); ok {
-		right = *r
-	}
-
-	delta := period.PeriodDelta(t * (float64(right) - float64(p)))
-	p.AddDelta(delta)
-	return p
-}
-
 // GetSamplerAdd returns the number of samples to advance an instrument by given the period
 func (p testPeriod) GetSamplerAdd(samplerSpeed float64) float64 {
 	period := float64(p)
